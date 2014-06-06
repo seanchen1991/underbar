@@ -39,7 +39,7 @@ var _ = {};
   // Like first, but for the last elements. If n is undefined, return just the
   // last element.
   _.last = function(array, n) {
-    if (n=== 0) {
+    if (n === 0) {
       return [];
     } else if (n > array.length) {
       return array;
@@ -78,7 +78,6 @@ var _ = {};
         result = index;
       }
     });
-
     return result;
   };
 
@@ -318,7 +317,7 @@ var _ = {};
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
-    var args = Array.prototype.slice(arguments, 2);
+    var args = Array.prototype.slice.call(arguments, 2);
     return setTimeout(function() {
       return func.apply(null, args);
     }, wait);
