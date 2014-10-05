@@ -38,14 +38,19 @@ var _ = {};
 
   // Like first, but for the last elements. If n is undefined, return just the
   // last element.
+  // _.last = function(array, n) {
+  //   if (n === 0) {
+  //     return [];
+  //   } else if (n > array.length) {
+  //     return array;
+  //   } else {
+  //     return n === undefined ? array[array.length - 1] : array.slice(n - 1, array.length);
+  //   }
+  // };
+
+//Rewritten Last using only ternary conditionals
   _.last = function(array, n) {
-    if (n === 0) {
-      return [];
-    } else if (n > array.length) {
-      return array;
-    } else {
-      return n === undefined ? array[array.length - 1] : array.slice(n - 1, array.length);
-    }
+    return n === 0 ? [] : (n > array.length ? array : (n === undefined ? array[array.length-1] : array.slice(n-1, array.length)));
   };
 
   // Call iterator(value, key, collection) for each element of collection.
@@ -55,7 +60,7 @@ var _ = {};
   // iterator function over each item in the input collection.
   _.each = function(collection, iterator) {
     if (collection.length !== undefined) {
-      for (var i = 0; i < collection.length; i++) {
+      for (var i = 0, x = collection.length; i < x; i++) {
         iterator(collection[i], i, collection);
       }
     } else {
@@ -72,7 +77,6 @@ var _ = {};
     // implemented for you. Instead of using a standard `for` loop, though,
     // it uses the iteration helper `each`, which you will need to write.
     var result = -1;
-
     _.each(array, function(item, index) {
       if (item === target && result === -1) {
         result = index;
@@ -106,8 +110,29 @@ var _ = {};
       if (_.indexOf(unique, element) == -1) {
         unique.push(element);
       }
-    })
+    });
     return unique;
+  };
+
+  //Faster version of Uniq
+  _.uniq = function(array) {
+    var unique = {}, result = [];
+    for (var i = 0; i < array.length; i++) {
+      unique[array[i]] = array[i];
+    };
+    for (var key in unique) {
+      result.push(unique[key]);
+    }
+    return result;
+  };
+
+  //An even cleaner way
+  _.uniq = function(array) {
+    var unique = {};
+    for (var i = 0, x = array.length; i < x; i++) {
+      unique[array[i]] = array[i];
+    }
+    return Object.keys(unique);
   };
 
   // Return the results of applying an iterator to each element.
@@ -159,11 +184,11 @@ var _ = {};
   //     return total + number;
   //   }, 0); // should be 6
   _.reduce = function(collection, iterator, accumulator) {
-    if (collection.length > 0 && accumulator == undefined) {
+    if (collection.length > 0 && accumulator === undefined) {
       var start = collection[0];
       _.each(collection, function(element) {
         start = iterator(start, element);
-      })
+      });
     } else {
       var start = accumulator;
       _.each(collection, function(element) {
@@ -195,10 +220,17 @@ var _ = {};
     }, true);
   };
 
+  //Simpler version of Every
+  _.every = function(collection, iterator) {
+    if (iterator === undefined) { iterator = _.identity; }
+    return _.reduce(collection, function(passed, element) {
+      return passed && Boolean(iterator(element));
+    }, true);
+  };
+
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
   _.some = function(collection, iterator) {
-    if (iterator === undefined) { iterator = _.identity; }
     return !(_.every(collection, function(element) {
       return !iterator(element);
     }));
@@ -298,17 +330,18 @@ var _ = {};
   // _.memoize should return a function that when called, will check if it has
   // already computed the result for the given argument and return that value
   // instead if possible.
+
   _.memoize = function(func) {
     var memo = {};
     return function() {
       var args = Array.prototype.slice.call(arguments);
-      if (args in memo) {
-        return memo[args];
-      } else {
-        return (memo[args] = func.apply(this, arguments));
+      if (memo[args] === undefined) {
+        return memo[args] = func.apply(null, arguments);
       }
+      return memo[args];
     }
   };
+  
 
   // Delays a function for the given number of milliseconds, and then calls
   // it with the arguments supplied.
@@ -371,17 +404,49 @@ var _ = {};
   // The new array should contain all elements of the multidimensional array.
   //
   // Hint: Use Array.isArray to check if something is an array
-  _.flatten = function(nestedArray, result) {
+
+  _.flatten = function(nestedArray) {
+    var storage = [];
+    function goThroughArray(arr) {
+      _.each(arr, function(element) {
+        if (Array.isArray(element) == false) {
+          storage.push(element);
+        } else {
+          goThroughArray(element);
+        }
+      });
+      return storage;
+    }
+    goThroughArray(nestedArray);
+    return storage;
   };
 
   // Takes an arbitrary number of arrays and produces an array that contains
   // every item shared between all the passed-in arrays.
   _.intersection = function() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    var intersection = [];
+    args.forEach(function(item) {
+      var test = _.every(args, function(arg) {
+        return arg.indexOf(item) >= 0;
+      });
+      if (test) { intersection.push(item) };
+    });
+    return intersection;
   };
 
   // Take the difference between one array and a number of other arrays.
   // Only the elements present in just the first array will remain.
   _.difference = function(array) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var difference = [];
+    array.forEach(function(item) {
+      var test = _.some(args, function(arg) {
+        return arg.indexOf(item) >= 0;
+      });
+      if (!test) { difference.push(item) };
+    });
+    return difference;
   };
 
 
@@ -395,6 +460,21 @@ var _ = {};
   //
   // See the Underbar readme for details.
   _.throttle = function(func, wait) {
+    var lastReturn, lastDate = 0, queued = false;
+    return function() {
+      if (Date.now() - lastDate > wait) {
+        lastDate = Date.now();
+        lastReturn = func(arguments);
+      } else if (!queued) {
+        queued = true;
+        setTimeout(function() {
+          lastReturn = func(arguments);
+          queued = false;
+          lastDate = Date.now();
+        }, wait - Date.now() + lastDate);
+      }
+      return lastReturn;
+    };
   };
 
 }).call(this);
